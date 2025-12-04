@@ -59,11 +59,15 @@
 <main>
 	<div class="container">
 		<header>
-			<h1>🎮 Line Connect Puzzle</h1>
-			<button class="secondary" onclick={() => (showLevelSelect = !showLevelSelect)}>
-				{showLevelSelect ? 'Close' : 'Select Level'}
-			</button>
-			<a href="/editor" class="secondary">Level Editor</a>
+			<div class="header-left">
+				<a href="/menu" class="back-button">← Menu</a>
+				<h1>🎮 Line Connect Puzzle</h1>
+			</div>
+			<div class="header-right">
+				<button class="secondary" onclick={() => (showLevelSelect = !showLevelSelect)}>
+					{showLevelSelect ? 'Close' : 'Select Level'}
+				</button>
+			</div>
 		</header>
 
 		{#if showLevelSelect}
@@ -163,18 +167,43 @@
 	}
 
 	header {
-		text-align: center;
 		margin-bottom: 2rem;
 		display: flex;
 		align-items: center;
-		justify-content: center;
+		justify-content: space-between;
 		gap: 1rem;
 		flex-wrap: wrap;
 	}
 
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.back-button {
+		color: white;
+		text-decoration: none;
+		padding: 0.75rem 1.5rem;
+		background: rgba(255, 255, 255, 0.2);
+		border-radius: 6px;
+		font-weight: 600;
+		transition: background 0.2s;
+	}
+
+	.back-button:hover {
+		background: rgba(255, 255, 255, 0.3);
+	}
+
 	h1 {
 		color: white;
-		font-size: 2.5rem;
+		font-size: 2rem;
 		margin: 0;
 		text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 	}
@@ -238,17 +267,11 @@
 		opacity: 0.6;
 	}
 
-	button.secondary, a.secondary {
+	button.secondary {
 		background: #764ba2;
-		text-decoration: none;
-		display: inline-block;
-		padding: 0.75rem 1.5rem;
-		border-radius: 6px;
-		color: white;
-		font-weight: 600;
 	}
 
-	button.secondary:hover, a.secondary:hover {
+	button.secondary:hover {
 		background: #653a8a;
 	}
 
