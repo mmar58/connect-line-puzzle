@@ -67,7 +67,7 @@
 <main>
 	<div class="container">
 		<header>
-			<a href="/menu" class="back-button">← Back to Menu</a>
+			<a href="/" class="back-button">← Menu</a>
 			<h1>⚙️ Settings</h1>
 		</header>
 

@@ -270,7 +270,7 @@
 	<div class="container">
 		<header>
 			<h1>🎨 Level Editor</h1>
-			<a href="/" class="back-button">← Back to Game</a>
+			<a href="/" class="back-button">← Menu</a>
 		</header>
 
 		{#if mode === 'edit'}
@@ -418,11 +418,14 @@
 		align-items: center;
 		margin-bottom: 2rem;
 		color: white;
+		flex-wrap: wrap;
+		gap: 1rem;
 	}
 
 	h1 {
 		margin: 0;
 		text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+		font-size: 2.5rem;
 	}
 
 	.back-button {

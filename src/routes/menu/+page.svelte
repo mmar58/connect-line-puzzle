@@ -2,11 +2,11 @@
 	import { goto } from '$app/navigation';
 
 	function handleTutorial() {
-		goto('/?level=1');
+		goto('/levels?id=1');
 	}
 
 	function handlePlay() {
-		goto('/');
+		goto('/levels');
 	}
 
 	function handleEdit() {
