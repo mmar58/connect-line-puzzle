@@ -332,12 +332,15 @@
 		justify-content: center;
 		gap: 0.5rem;
 		position: relative;
-		background: #f5f5f5;
+		background: #e8e8e8;
+		color: #999;
+		border: 2px solid #ddd;
 	}
 
 	.level-card:hover {
 		background: #667eea;
 		color: white;
+		border-color: #667eea;
 	}
 
 	.level-card.active {
@@ -349,6 +352,11 @@
 	.level-card.completed {
 		background: #4ECDC4;
 		color: white;
+		border: 2px solid #3db8af;
+	}
+	
+	.level-card.completed:hover {
+		background: #3db8af;
 	}
 
 	.level-number {
