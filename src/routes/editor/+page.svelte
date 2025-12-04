@@ -15,6 +15,10 @@
 	let levelId = $state(1000); // Custom levels start at 1000
 	let mode: 'edit' | 'test' = $state('edit');
 	let gameManager: GameManager | null = $state(null);
+	let allLevels: Level[] = $state([]);
+	let isEditingExisting = $state(false);
+	let draggedDotId: number | null = $state(null);
+	let isDragging = $state(false);
 
 	const colors = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8E6CF'];
 	const canvasWidth = 800;
@@ -26,9 +30,11 @@
 			renderEditor();
 		}
 
+		// Load all available levels
+		allLevels = getAllLevels();
+
 		// Find next available level ID
-		const existingLevels = getAllLevels();
-		const maxId = Math.max(...existingLevels.map(l => l.id), 999);
+		const maxId = Math.max(...allLevels.map(l => l.id), 999);
 		levelId = maxId + 1;
 	});
 
@@ -102,35 +108,99 @@
 	}
 
 	function handleCanvasClick(e: MouseEvent) {
-		if (mode !== 'edit') return;
+		if (mode !== 'edit' || isDragging) return;
 
 		const rect = canvas.getBoundingClientRect();
 		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
 		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
 
-		// Check if clicking near existing dot (to delete or connect)
+		// Check if clicking near existing dot
 		const clickedDot = dots.find(d => 
 			Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30
 		);
 
 		if (e.shiftKey && clickedDot) {
-			// Shift+click to delete dot
-			dots = dots.filter(d => d.id !== clickedDot.id);
-			connections = connections.filter(c => 
-				c.dotId1 !== clickedDot.id && c.dotId2 !== clickedDot.id
+			// Shift+click to delete dot and its pair
+			const dotsToDelete = [clickedDot.id];
+			const pairConnection = connections.find(c => 
+				c.dotId1 === clickedDot.id || c.dotId2 === clickedDot.id
 			);
-		} else {
-			// Add new dot
+			if (pairConnection) {
+				const pairId = pairConnection.dotId1 === clickedDot.id ? pairConnection.dotId2 : pairConnection.dotId1;
+				dotsToDelete.push(pairId);
+			}
+			
+			dots = dots.filter(d => !dotsToDelete.includes(d.id));
+			connections = connections.filter(c => 
+				!dotsToDelete.includes(c.dotId1) && !dotsToDelete.includes(c.dotId2)
+			);
+		} else if (!clickedDot) {
+			// Add new dot with automatic pairing
+			const dot1Id = nextDotId;
+			const dot2Id = nextDotId + 1;
+			
+			// Create first dot at click position
 			dots.push({
-				id: nextDotId,
+				id: dot1Id,
 				x: Math.round(x),
 				y: Math.round(y),
 				color: selectedColor
 			});
-			nextDotId++;
+			
+			// Create paired dot at offset position
+			dots.push({
+				id: dot2Id,
+				x: Math.round(x) + 100,
+				y: Math.round(y) + 100,
+				color: selectedColor
+			});
+			
+			// Auto-connect the pair
+			connections.push({ dotId1: dot1Id, dotId2: dot2Id });
+			
+			nextDotId += 2;
 		}
 
 		renderEditor();
+	}
+
+	function handleCanvasMouseDown(e: MouseEvent) {
+		if (mode !== 'edit' || e.shiftKey) return;
+
+		const rect = canvas.getBoundingClientRect();
+		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
+		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
+
+		// Check if clicking on existing dot to drag
+		const clickedDot = dots.find(d => 
+			Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30
+		);
+
+		if (clickedDot) {
+			draggedDotId = clickedDot.id;
+			isDragging = true;
+		}
+	}
+
+	function handleCanvasMouseMove(e: MouseEvent) {
+		if (!isDragging || draggedDotId === null || mode !== 'edit') return;
+
+		const rect = canvas.getBoundingClientRect();
+		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
+		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
+
+		// Update dot position
+		const dotIndex = dots.findIndex(d => d.id === draggedDotId);
+		if (dotIndex !== -1) {
+			dots[dotIndex].x = Math.round(x);
+			dots[dotIndex].y = Math.round(y);
+			renderEditor();
+		}
+	}
+
+	function handleCanvasMouseUp() {
+		isDragging = false;
+		draggedDotId = null;
 	}
 
 	function addConnection(dotId1: number, dotId2: number) {
@@ -156,8 +226,30 @@
 			dots = [];
 			connections = [];
 			nextDotId = 1;
+			isEditingExisting = false;
 			renderEditor();
 		}
+	}
+
+	function loadExistingLevel(level: Level) {
+		levelId = level.id;
+		levelName = level.name;
+		dots = [...level.dots];
+		connections = [...level.requiredConnections];
+		nextDotId = Math.max(...dots.map(d => d.id), 0) + 1;
+		isEditingExisting = true;
+		renderEditor();
+	}
+
+	function createNewLevel() {
+		dots = [];
+		connections = [];
+		levelName = 'My Level';
+		const maxId = Math.max(...allLevels.map(l => l.id), 999);
+		levelId = maxId + 1;
+		nextDotId = 1;
+		isEditingExisting = false;
+		renderEditor();
 	}
 
 	function saveLevel() {
@@ -277,6 +369,45 @@
 			<div class="editor">
 				<div class="controls-panel">
 					<div class="section">
+						<h3>Level Management</h3>
+						{#if isEditingExisting}
+							<div class="edit-badge">✏️ Editing Existing Level</div>
+						{:else}
+							<div class="new-badge">✨ Creating New Level</div>
+						{/if}
+						<label>
+							Load Level:
+							<select onchange={(e) => {
+								const selectedId = parseInt((e.target as HTMLSelectElement).value);
+								if (selectedId === -1) {
+									createNewLevel();
+								} else {
+									const level = allLevels.find(l => l.id === selectedId);
+									if (level) loadExistingLevel(level);
+								}
+							}}>
+								<option value="-1">+ New Level</option>
+								<optgroup label="Built-in Levels">
+									{#each allLevels.filter(l => l.id < 1000) as level}
+										<option value={level.id} selected={level.id === levelId}>
+											{level.id}. {level.name}
+										</option>
+									{/each}
+								</optgroup>
+								{#if allLevels.some(l => l.id >= 1000)}
+									<optgroup label="Custom Levels">
+										{#each allLevels.filter(l => l.id >= 1000) as level}
+											<option value={level.id} selected={level.id === levelId}>
+												{level.id}. {level.name}
+											</option>
+										{/each}
+									</optgroup>
+								{/if}
+							</select>
+						</label>
+					</div>
+
+					<div class="section">
 						<h3>Level Info</h3>
 						<label>
 							Level Name:
@@ -305,9 +436,10 @@
 					<div class="section">
 						<h3>Instructions</h3>
 						<ul class="instructions">
-							<li>Click canvas to add dot</li>
-							<li>Shift+Click dot to delete</li>
-							<li>Use connections panel to link dots</li>
+							<li>Click canvas to add dot pair</li>
+							<li>Drag dots to reposition</li>
+							<li>Shift+Click dot to delete pair</li>
+							<li>Pairs auto-connect by default</li>
 						</ul>
 					</div>
 
@@ -370,7 +502,12 @@
 						width={canvasWidth}
 						height={canvasHeight}
 						onclick={handleCanvasClick}
+						onmousedown={handleCanvasMouseDown}
+						onmousemove={handleCanvasMouseMove}
+						onmouseup={handleCanvasMouseUp}
+						onmouseleave={handleCanvasMouseUp}
 						class="editor-canvas"
+						class:dragging={isDragging}
 					></canvas>
 					<p class="stats">Dots: {dots.length} | Connections: {connections.length}</p>
 				</div>
@@ -641,6 +778,29 @@
 		border-radius: 8px;
 		cursor: crosshair;
 		background: #1a1a2e;
+	}
+
+	.editor-canvas.dragging {
+		cursor: move;
+	}
+
+	.edit-badge, .new-badge {
+		padding: 0.5rem 1rem;
+		border-radius: 6px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-align: center;
+		margin-bottom: 1rem;
+	}
+
+	.edit-badge {
+		background: #FFD93D;
+		color: #333;
+	}
+
+	.new-badge {
+		background: #4ECDC4;
+		color: white;
 	}
 
 	.stats {
