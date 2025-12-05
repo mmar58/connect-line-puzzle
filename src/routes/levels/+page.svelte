@@ -15,16 +15,25 @@
 	onMount(() => {
 		allLevels = getAllLevels();
 		
-		// Check if coming from tutorial button
+		// Check URL parameters
 		const urlParams = new URLSearchParams(window.location.search);
 		if (urlParams.get('tutorial') === 'true') {
 			currentLevelId = 1;
 			showLevelSelect = false;
+			loadLevel(currentLevelId);
+		} else if (urlParams.get('id')) {
+			const levelId = parseInt(urlParams.get('id')!);
+			if (!isNaN(levelId)) {
+				currentLevelId = levelId;
+				showLevelSelect = false;
+				loadLevel(currentLevelId);
+			} else {
+				showLevelSelect = true;
+			}
 		} else {
 			showLevelSelect = true;
+			loadLevel(currentLevelId);
 		}
-		
-		loadLevel(currentLevelId);
 	});
 
 	function loadLevel(levelId: number) {

@@ -19,8 +19,9 @@
 	let isEditingExisting = $state(false);
 	let draggedDotId: number | null = $state(null);
 	let isDragging = $state(false);
+	let colors = $state(['#FF6B6B', '#4ECDC4', '#FFD93D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8E6CF']);
+	let newColorInput = $state('#000000');
 
-	const colors = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8E6CF'];
 	const canvasWidth = 800;
 	const canvasHeight = 600;
 
@@ -422,14 +423,45 @@
 					<div class="section">
 						<h3>Color Palette</h3>
 						<div class="color-palette">
-							{#each colors as color}
-								<button
-									class="color-button"
-									class:active={selectedColor === color}
-									style="background-color: {color}"
-									onclick={() => (selectedColor = color)}
-								></button>
+							{#each colors as color, index}
+								<div class="color-item">
+									<button
+										class="color-button"
+										class:active={selectedColor === color}
+										style="background-color: {color}"
+										onclick={() => (selectedColor = color)}
+										title={color}
+									></button>
+									<button
+										class="remove-color-btn"
+										onclick={() => {
+											if (colors.length > 1) {
+												colors = colors.filter((_, i) => i !== index);
+												if (selectedColor === color) {
+													selectedColor = colors[0];
+												}
+											}
+										}}
+										title="Remove color"
+									>×</button>
+								</div>
 							{/each}
+						</div>
+						<div class="add-color-section">
+							<input
+								type="color"
+								bind:value={newColorInput}
+								class="color-picker"
+							/>
+							<button
+								class="add-color-btn"
+								onclick={() => {
+									if (!colors.includes(newColorInput)) {
+										colors = [...colors, newColorInput];
+										selectedColor = newColorInput;
+									}
+								}}
+							>+ Add Color</button>
 						</div>
 					</div>
 
@@ -639,11 +671,17 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.color-item {
+		position: relative;
+		aspect-ratio: 1;
 	}
 
 	.color-button {
 		width: 100%;
-		aspect-ratio: 1;
+		height: 100%;
 		border: 3px solid transparent;
 		border-radius: 8px;
 		cursor: pointer;
@@ -651,12 +689,74 @@
 	}
 
 	.color-button:hover {
-		transform: scale(1.1);
+		transform: scale(1.05);
 	}
 
 	.color-button.active {
 		border-color: #333;
 		box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+	}
+
+	.remove-color-btn {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		background: #ff6b6b;
+		color: white;
+		border: 2px solid white;
+		border-radius: 50%;
+		cursor: pointer;
+		font-size: 14px;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity 0.2s;
+	}
+
+	.color-item:hover .remove-color-btn {
+		opacity: 1;
+	}
+
+	.remove-color-btn:hover {
+		background: #ee5a5a;
+		transform: none;
+	}
+
+	.add-color-section {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.color-picker {
+		width: 60px;
+		height: 40px;
+		border: 2px solid #ddd;
+		border-radius: 6px;
+		cursor: pointer;
+		padding: 2px;
+	}
+
+	.add-color-btn {
+		flex: 1;
+		padding: 0.5rem 1rem;
+		background: #667eea;
+		color: white;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+
+	.add-color-btn:hover {
+		background: #5568d3;
+		transform: translateY(-1px);
 	}
 
 	.instructions {

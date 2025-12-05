@@ -1,12 +1,30 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { getAllLevels, loadProgress } from '$lib/stores/levels';
+	import type { Level } from '$lib/types/game';
+
+	let showLevelSelector = $state(false);
+	let allLevels = $state<Level[]>([]);
+
+	onMount(() => {
+		allLevels = getAllLevels();
+	});
 
 	function handleTutorial() {
 		window.location.href = '/levels?tutorial=true';
 	}
 
 	function handlePlay() {
-		window.location.href = '/levels';
+		showLevelSelector = true;
+	}
+
+	function handleBackToMenu() {
+		showLevelSelector = false;
+	}
+
+	function handleSelectLevel(levelId: number) {
+		window.location.href = `/levels?id=${levelId}`;
 	}
 
 	function handleEdit() {
@@ -20,11 +38,12 @@
 
 <main>
 	<div class="container">
-		<div class="menu-card">
-			<h1>🎮 Line Connect Puzzle</h1>
-			<p class="subtitle">Connect the dots without overlapping lines!</p>
+		{#if !showLevelSelector}
+			<div class="menu-card">
+				<h1>🎮 Line Connect Puzzle</h1>
+				<p class="subtitle">Connect the dots without overlapping lines!</p>
 
-			<div class="menu-buttons">
+				<div class="menu-buttons">
 				<button class="menu-btn tutorial" onclick={handleTutorial}>
 					<span class="icon">🎓</span>
 					<span class="label">Tutorial</span>
@@ -50,10 +69,40 @@
 				</button>
 			</div>
 
-			<footer class="menu-footer">
-				<p>Made with ❤️ using SvelteKit</p>
-			</footer>
-		</div>
+				<footer class="menu-footer">
+					<p>Made with ❤️ using SvelteKit</p>
+				</footer>
+			</div>
+		{:else}
+			<div class="level-selector-card">
+				<div class="selector-header">
+					<button class="back-btn" onclick={handleBackToMenu}>
+						← Back
+					</button>
+					<h2>Select a Level</h2>
+				</div>
+
+				<div class="levels-grid">
+					{#each allLevels as level}
+						{@const progress = loadProgress(level.id)}
+						<button
+							class="level-card"
+							class:completed={progress?.completed}
+							onclick={() => handleSelectLevel(level.id)}
+						>
+							<div class="level-number">{level.id}</div>
+							<div class="level-name">{level.name}</div>
+							{#if progress?.completed}
+								<div class="completed-badge">✓</div>
+							{/if}
+							{#if level.id >= 1000}
+								<div class="custom-badge">Custom</div>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	</div>
 </main>
 
@@ -77,6 +126,12 @@
 	.container {
 		width: 100%;
 		max-width: 500px;
+		display: flex;
+		justify-content: center;
+	}
+
+	.container:has(.level-selector-card) {
+		max-width: 900px;
 	}
 
 	.menu-card {
@@ -190,6 +245,146 @@
 		font-size: 0.9rem;
 	}
 
+	/* Level Selector Styles */
+	.level-selector-card {
+		background: white;
+		border-radius: 20px;
+		padding: 2rem;
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		max-width: 900px;
+		width: 100%;
+		max-height: 85vh;
+		overflow-y: auto;
+	}
+
+	.selector-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 2rem;
+		position: relative;
+	}
+
+	.back-btn {
+		padding: 0.75rem 1.5rem;
+		background: rgba(102, 126, 234, 0.1);
+		color: #667eea;
+		border: none;
+		border-radius: 10px;
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.3s;
+	}
+
+	.back-btn:hover {
+		background: rgba(102, 126, 234, 0.2);
+		transform: translateX(-3px);
+	}
+
+	.selector-header h2 {
+		margin: 0;
+		font-size: 2rem;
+		color: #333;
+		flex: 1;
+		text-align: center;
+	}
+
+	.levels-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+		gap: 1rem;
+	}
+
+	.level-card {
+		position: relative;
+		aspect-ratio: 1;
+		background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+		border: 3px solid #e0e4ea;
+		border-radius: 15px;
+		cursor: pointer;
+		transition: all 0.3s;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 1rem;
+		overflow: hidden;
+	}
+
+	.level-card:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+		border-color: #667eea;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	}
+
+	.level-card:hover .level-number,
+	.level-card:hover .level-name {
+		color: white;
+	}
+
+	.level-card.completed {
+		background: linear-gradient(135deg, #4ECDC4 0%, #3db8af 100%);
+		border-color: #3db8af;
+	}
+
+	.level-card.completed .level-number,
+	.level-card.completed .level-name {
+		color: white;
+	}
+
+	.level-card.completed:hover {
+		background: linear-gradient(135deg, #3db8af 0%, #2ca89f 100%);
+	}
+
+	.level-number {
+		font-size: 2.5rem;
+		font-weight: bold;
+		color: #333;
+		line-height: 1;
+	}
+
+	.level-name {
+		font-size: 0.9rem;
+		color: #666;
+		text-align: center;
+		font-weight: 500;
+	}
+
+	.completed-badge {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		background: white;
+		color: #4ECDC4;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.2rem;
+		font-weight: bold;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	}
+
+	.custom-badge {
+		position: absolute;
+		bottom: 8px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: #FFD93D;
+		color: #333;
+		padding: 0.25rem 0.75rem;
+		border-radius: 12px;
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
 	@media (max-width: 768px) {
 		h1 {
 			font-size: 2rem;
@@ -205,6 +400,23 @@
 
 		.label {
 			font-size: 1.1rem;
+		}
+
+		.level-selector-card {
+			padding: 1.5rem;
+		}
+
+		.selector-header h2 {
+			font-size: 1.5rem;
+		}
+
+		.levels-grid {
+			grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+			gap: 0.75rem;
+		}
+
+		.level-number {
+			font-size: 2rem;
 		}
 	}
 </style>
