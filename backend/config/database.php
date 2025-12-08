@@ -4,10 +4,10 @@
  * Establishes PDO connection to MySQL database
  */
 
-$host = getenv('DB_HOST') ?: 'localhost';
+$host = getenv('DB_HOST') ?: '192.168.0.2';
 $dbname = getenv('DB_NAME') ?: 'line_puzzle';
 $username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') ?: '';
+$password = getenv('DB_PASS') ?: '123456';
 
 try {
     $pdo = new PDO(
