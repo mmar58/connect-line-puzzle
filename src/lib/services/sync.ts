@@ -22,7 +22,7 @@ export function getUserId(): string {
 export const syncService = {
     async syncLevels() {
         try {
-            const response = await api.get<{ levels: Level[] }>('/levels/get.php?perPage=100');
+            const response = await api.get<{ levels: Level[] }>('/levels?perPage=100');
 
             if (response.success && response.data?.levels) {
                 // Update local storage with server levels
@@ -43,7 +43,7 @@ export const syncService = {
     async syncProgress() {
         try {
             const userId = getUserId();
-            const response = await api.get<{ progress: LevelProgress[] }>(`/progress/get.php?userId=${userId}`);
+            const response = await api.get<{ progress: LevelProgress[] }>(`/progress?userId=${userId}`);
 
             if (!response.success) {
                 console.warn('Failed to fetch remote progress');
@@ -103,7 +103,7 @@ export const syncService = {
                 }
 
                 if (shouldPush) {
-                    await api.post('/progress/save.php', {
+                    await api.post('/progress', {
                         userId,
                         levelId: local.levelId,
                         completed: local.completed,
