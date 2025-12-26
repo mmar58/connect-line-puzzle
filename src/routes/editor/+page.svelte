@@ -1,33 +1,50 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Dot, Level, Connection } from '$lib/types/game';
-	import { saveLevelToStorage, exportLevelAsJSON, importLevelFromJSON, getAllLevels } from '$lib/stores/levels';
-	import { GameManager } from '$lib/game/state.svelte';
-	import GameCanvas from '$lib/components/GameCanvas.svelte';
+	import { onMount, untrack } from "svelte";
+	import type { Dot, Level, Connection } from "$lib/types/game";
+	import {
+		levelsStore,
+		saveLevelToStorage,
+		deleteLevelFromStorage,
+		exportLevelAsJSON,
+		importLevelFromJSON,
+		getAllLevels,
+	} from "$lib/stores/levels";
+	import { api } from "$lib/api";
+	import { GameManager } from "$lib/game/state.svelte";
+	import GameCanvas from "$lib/components/GameCanvas.svelte";
 
 	let canvas: HTMLCanvasElement;
 	let ctx: CanvasRenderingContext2D;
 	let dots: Dot[] = $state([]);
 	let connections: Connection[] = $state([]);
 	let nextDotId = $state(1);
-	let selectedColor = $state('#FF6B6B');
-	let levelName = $state('My Level');
+	let selectedColor = $state("#FF6B6B");
+	let levelName = $state("My Level");
 	let levelId = $state(1000); // Custom levels start at 1000
-	let mode: 'edit' | 'test' = $state('edit');
+	let mode: "edit" | "test" = $state("edit");
 	let gameManager: GameManager | null = $state(null);
 	let allLevels: Level[] = $state([]);
 	let isEditingExisting = $state(false);
 	let draggedDotId: number | null = $state(null);
 	let isDragging = $state(false);
-	let colors = $state(['#FF6B6B', '#4ECDC4', '#FFD93D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8E6CF']);
-	let newColorInput = $state('#000000');
+	let colors = $state([
+		"#FF6B6B",
+		"#4ECDC4",
+		"#FFD93D",
+		"#95E1D3",
+		"#F38181",
+		"#AA96DA",
+		"#FCBAD3",
+		"#A8E6CF",
+	]);
+	let newColorInput = $state("#000000");
 
 	const canvasWidth = 800;
 	const canvasHeight = 600;
 
 	onMount(() => {
 		if (canvas) {
-			ctx = canvas.getContext('2d')!;
+			ctx = canvas.getContext("2d")!;
 			renderEditor();
 		}
 
@@ -35,7 +52,7 @@
 		allLevels = getAllLevels();
 
 		// Find next available level ID
-		const maxId = Math.max(...allLevels.map(l => l.id), 999);
+		const maxId = Math.max(...allLevels.map((l) => l.id), 999);
 		levelId = maxId + 1;
 	});
 
@@ -43,11 +60,11 @@
 		if (!ctx) return;
 
 		// Clear canvas
-		ctx.fillStyle = '#1a1a2e';
+		ctx.fillStyle = "#1a1a2e";
 		ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
 		// Draw grid
-		ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+		ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
 		ctx.lineWidth = 1;
 		for (let x = 0; x < canvasWidth; x += 50) {
 			ctx.beginPath();
@@ -64,8 +81,8 @@
 
 		// Draw connections
 		for (const conn of connections) {
-			const dot1 = dots.find(d => d.id === conn.dotId1);
-			const dot2 = dots.find(d => d.id === conn.dotId2);
+			const dot1 = dots.find((d) => d.id === conn.dotId1);
+			const dot2 = dots.find((d) => d.id === conn.dotId2);
 			if (dot1 && dot2) {
 				ctx.strokeStyle = dot1.color;
 				ctx.lineWidth = 3;
@@ -87,78 +104,83 @@
 			ctx.fill();
 
 			// Inner circle
-			ctx.fillStyle = 'white';
+			ctx.fillStyle = "white";
 			ctx.beginPath();
 			ctx.arc(dot.x, dot.y, 8, 0, Math.PI * 2);
 			ctx.fill();
 
 			// Border
-			ctx.strokeStyle = '#333';
+			ctx.strokeStyle = "#333";
 			ctx.lineWidth = 2;
 			ctx.beginPath();
 			ctx.arc(dot.x, dot.y, 20, 0, Math.PI * 2);
 			ctx.stroke();
 
 			// ID label
-			ctx.fillStyle = 'white';
-			ctx.font = 'bold 10px sans-serif';
-			ctx.textAlign = 'center';
-			ctx.textBaseline = 'top';
+			ctx.fillStyle = "white";
+			ctx.font = "bold 10px sans-serif";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "top";
 			ctx.fillText(dot.id.toString(), dot.x, dot.y + 25);
 		}
 	}
 
 	function handleCanvasClick(e: MouseEvent) {
-		if (mode !== 'edit' || isDragging) return;
+		if (mode !== "edit" || isDragging) return;
 
 		const rect = canvas.getBoundingClientRect();
 		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
 		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
 
 		// Check if clicking near existing dot
-		const clickedDot = dots.find(d => 
-			Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30
+		const clickedDot = dots.find(
+			(d) => Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30,
 		);
 
 		if (e.shiftKey && clickedDot) {
 			// Shift+click to delete dot and its pair
 			const dotsToDelete = [clickedDot.id];
-			const pairConnection = connections.find(c => 
-				c.dotId1 === clickedDot.id || c.dotId2 === clickedDot.id
+			const pairConnection = connections.find(
+				(c) => c.dotId1 === clickedDot.id || c.dotId2 === clickedDot.id,
 			);
 			if (pairConnection) {
-				const pairId = pairConnection.dotId1 === clickedDot.id ? pairConnection.dotId2 : pairConnection.dotId1;
+				const pairId =
+					pairConnection.dotId1 === clickedDot.id
+						? pairConnection.dotId2
+						: pairConnection.dotId1;
 				dotsToDelete.push(pairId);
 			}
-			
-			dots = dots.filter(d => !dotsToDelete.includes(d.id));
-			connections = connections.filter(c => 
-				!dotsToDelete.includes(c.dotId1) && !dotsToDelete.includes(c.dotId2)
+
+			dots = dots.filter((d) => !dotsToDelete.includes(d.id));
+			connections = connections.filter(
+				(c) =>
+					!dotsToDelete.includes(c.dotId1) &&
+					!dotsToDelete.includes(c.dotId2),
 			);
 		} else if (!clickedDot) {
 			// Add new dot with automatic pairing
 			const dot1Id = nextDotId;
 			const dot2Id = nextDotId + 1;
-			
+
 			// Create first dot at click position
 			dots.push({
 				id: dot1Id,
 				x: Math.round(x),
 				y: Math.round(y),
-				color: selectedColor
+				color: selectedColor,
 			});
-			
+
 			// Create paired dot at offset position
 			dots.push({
 				id: dot2Id,
 				x: Math.round(x) + 100,
 				y: Math.round(y) + 100,
-				color: selectedColor
+				color: selectedColor,
 			});
-			
+
 			// Auto-connect the pair
 			connections.push({ dotId1: dot1Id, dotId2: dot2Id });
-			
+
 			nextDotId += 2;
 		}
 
@@ -166,15 +188,15 @@
 	}
 
 	function handleCanvasMouseDown(e: MouseEvent) {
-		if (mode !== 'edit' || e.shiftKey) return;
+		if (mode !== "edit" || e.shiftKey) return;
 
 		const rect = canvas.getBoundingClientRect();
 		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
 		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
 
 		// Check if clicking on existing dot to drag
-		const clickedDot = dots.find(d => 
-			Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30
+		const clickedDot = dots.find(
+			(d) => Math.sqrt((d.x - x) ** 2 + (d.y - y) ** 2) < 30,
 		);
 
 		if (clickedDot) {
@@ -184,14 +206,14 @@
 	}
 
 	function handleCanvasMouseMove(e: MouseEvent) {
-		if (!isDragging || draggedDotId === null || mode !== 'edit') return;
+		if (!isDragging || draggedDotId === null || mode !== "edit") return;
 
 		const rect = canvas.getBoundingClientRect();
 		const x = ((e.clientX - rect.left) * canvasWidth) / rect.width;
 		const y = ((e.clientY - rect.top) * canvasHeight) / rect.height;
 
 		// Update dot position
-		const dotIndex = dots.findIndex(d => d.id === draggedDotId);
+		const dotIndex = dots.findIndex((d) => d.id === draggedDotId);
 		if (dotIndex !== -1) {
 			dots[dotIndex].x = Math.round(x);
 			dots[dotIndex].y = Math.round(y);
@@ -206,9 +228,10 @@
 
 	function addConnection(dotId1: number, dotId2: number) {
 		// Check if connection already exists
-		const exists = connections.some(c =>
-			(c.dotId1 === dotId1 && c.dotId2 === dotId2) ||
-			(c.dotId1 === dotId2 && c.dotId2 === dotId1)
+		const exists = connections.some(
+			(c) =>
+				(c.dotId1 === dotId1 && c.dotId2 === dotId2) ||
+				(c.dotId1 === dotId2 && c.dotId2 === dotId1),
 		);
 
 		if (!exists) {
@@ -223,7 +246,7 @@
 	}
 
 	function clearAll() {
-		if (confirm('Clear all dots and connections?')) {
+		if (confirm("Clear all dots and connections?")) {
 			dots = [];
 			connections = [];
 			nextDotId = 1;
@@ -237,7 +260,7 @@
 		levelName = level.name;
 		dots = [...level.dots];
 		connections = [...level.requiredConnections];
-		nextDotId = Math.max(...dots.map(d => d.id), 0) + 1;
+		nextDotId = Math.max(...dots.map((d) => d.id), 0) + 1;
 		isEditingExisting = true;
 		renderEditor();
 	}
@@ -245,8 +268,8 @@
 	function createNewLevel() {
 		dots = [];
 		connections = [];
-		levelName = 'My Level';
-		const maxId = Math.max(...allLevels.map(l => l.id), 999);
+		levelName = "My Level";
+		const maxId = Math.max(...allLevels.map((l) => l.id), 999);
 		levelId = maxId + 1;
 		nextDotId = 1;
 		isEditingExisting = false;
@@ -255,12 +278,12 @@
 
 	function saveLevel() {
 		if (dots.length === 0) {
-			alert('Please add some dots first!');
+			alert("Please add some dots first!");
 			return;
 		}
 
 		if (connections.length === 0) {
-			alert('Please add at least one connection!');
+			alert("Please add at least one connection!");
 			return;
 		}
 
@@ -270,11 +293,28 @@
 			gridWidth: canvasWidth,
 			gridHeight: canvasHeight,
 			dots: [...dots],
-			requiredConnections: [...connections]
+			requiredConnections: [...connections],
 		};
 
 		saveLevelToStorage(level);
-		alert(`Level "${levelName}" saved successfully!`);
+
+		api.post("/levels", level).then((response) => {
+			if (response.success) {
+				const serverId = response.data.levelId;
+				if (serverId && serverId !== levelId) {
+					deleteLevelFromStorage(levelId);
+					const newLevel = { ...level, id: serverId };
+					saveLevelToStorage(newLevel);
+					levelId = serverId;
+				}
+				alert(`Level "${levelName}" saved to database successfully!`);
+			} else {
+				console.error("Failed to save to database:", response.error);
+				alert(
+					`Saved locally, but failed to save to database: ${response.error}`,
+				);
+			}
+		});
 	}
 
 	function exportLevel() {
@@ -284,13 +324,13 @@
 			gridWidth: canvasWidth,
 			gridHeight: canvasHeight,
 			dots: [...dots],
-			requiredConnections: [...connections]
+			requiredConnections: [...connections],
 		};
 
 		const json = exportLevelAsJSON(level);
-		const blob = new Blob([json], { type: 'application/json' });
+		const blob = new Blob([json], { type: "application/json" });
 		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
+		const a = document.createElement("a");
 		a.href = url;
 		a.download = `level-${levelId}.json`;
 		a.click();
@@ -298,9 +338,9 @@
 	}
 
 	function importLevel() {
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept = '.json';
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".json";
 		input.onchange = (e) => {
 			const file = (e.target as HTMLInputElement).files?.[0];
 			if (file) {
@@ -313,11 +353,11 @@
 						levelName = level.name;
 						dots = [...level.dots];
 						connections = [...level.requiredConnections];
-						nextDotId = Math.max(...dots.map(d => d.id)) + 1;
+						nextDotId = Math.max(...dots.map((d) => d.id)) + 1;
 						renderEditor();
-						alert('Level imported successfully!');
+						alert("Level imported successfully!");
 					} else {
-						alert('Failed to import level. Invalid JSON format.');
+						alert("Failed to import level. Invalid JSON format.");
 					}
 				};
 				reader.readAsText(file);
@@ -328,7 +368,7 @@
 
 	function testLevel() {
 		if (dots.length === 0 || connections.length === 0) {
-			alert('Please add dots and connections before testing!');
+			alert("Please add dots and connections before testing!");
 			return;
 		}
 
@@ -338,24 +378,37 @@
 			gridWidth: canvasWidth,
 			gridHeight: canvasHeight,
 			dots: [...dots],
-			requiredConnections: [...connections]
+			requiredConnections: [...connections],
 		};
 
 		gameManager = new GameManager();
 		gameManager.loadLevel(level);
-		mode = 'test';
+		mode = "test";
 	}
 
 	function backToEdit() {
-		mode = 'edit';
+		mode = "edit";
 		gameManager = null;
 		renderEditor();
 	}
 
 	$effect(() => {
-		if (mode === 'edit') {
+		if (mode === "edit") {
 			renderEditor();
 		}
+	});
+
+	$effect(() => {
+		allLevels = $levelsStore;
+		console.log("[Editor] Levels updated from store:", allLevels);
+		// Find next available level ID
+		const maxId = Math.max(...allLevels.map((l) => l.id), 999);
+		// Only update levelId if we are in "new level" mode/init to prevent overwriting
+		untrack(() => {
+			if (!isEditingExisting && levelId <= 1000) {
+				levelId = maxId + 1;
+			}
+		});
 	});
 </script>
 
@@ -366,39 +419,53 @@
 			<a href="/" class="back-button">← Menu</a>
 		</header>
 
-		{#if mode === 'edit'}
+		{#if mode === "edit"}
 			<div class="editor">
 				<div class="controls-panel">
 					<div class="section">
 						<h3>Level Management</h3>
 						{#if isEditingExisting}
-							<div class="edit-badge">✏️ Editing Existing Level</div>
+							<div class="edit-badge">
+								✏️ Editing Existing Level
+							</div>
 						{:else}
 							<div class="new-badge">✨ Creating New Level</div>
 						{/if}
 						<label>
 							Load Level:
-							<select onchange={(e) => {
-								const selectedId = parseInt((e.target as HTMLSelectElement).value);
-								if (selectedId === -1) {
-									createNewLevel();
-								} else {
-									const level = allLevels.find(l => l.id === selectedId);
-									if (level) loadExistingLevel(level);
-								}
-							}}>
+							<select
+								onchange={(e) => {
+									const selectedId = parseInt(
+										(e.target as HTMLSelectElement).value,
+									);
+									if (selectedId === -1) {
+										createNewLevel();
+									} else {
+										const level = allLevels.find(
+											(l) => l.id === selectedId,
+										);
+										if (level) loadExistingLevel(level);
+									}
+								}}
+							>
 								<option value="-1">+ New Level</option>
 								<optgroup label="Built-in Levels">
-									{#each allLevels.filter(l => l.id < 1000) as level}
-										<option value={level.id} selected={level.id === levelId}>
+									{#each allLevels.filter((l) => l.isOfficial) as level}
+										<option
+											value={level.id}
+											selected={level.id === levelId}
+										>
 											{level.id}. {level.name}
 										</option>
 									{/each}
 								</optgroup>
-								{#if allLevels.some(l => l.id >= 1000)}
+								{#if allLevels.some((l) => !l.isOfficial)}
 									<optgroup label="Custom Levels">
-										{#each allLevels.filter(l => l.id >= 1000) as level}
-											<option value={level.id} selected={level.id === levelId}>
+										{#each allLevels.filter((l) => !l.isOfficial) as level}
+											<option
+												value={level.id}
+												selected={level.id === levelId}
+											>
 												{level.id}. {level.name}
 											</option>
 										{/each}
@@ -436,14 +503,16 @@
 										class="remove-color-btn"
 										onclick={() => {
 											if (colors.length > 1) {
-												colors = colors.filter((_, i) => i !== index);
+												colors = colors.filter(
+													(_, i) => i !== index,
+												);
 												if (selectedColor === color) {
 													selectedColor = colors[0];
 												}
 											}
 										}}
-										title="Remove color"
-									>×</button>
+										title="Remove color">×</button
+									>
 								</div>
 							{/each}
 						</div>
@@ -460,8 +529,8 @@
 										colors = [...colors, newColorInput];
 										selectedColor = newColorInput;
 									}
-								}}
-							>+ Add Color</button>
+								}}>+ Add Color</button
+							>
 						</div>
 					</div>
 
@@ -482,16 +551,27 @@
 								<p class="empty">No connections yet</p>
 							{/if}
 							{#each connections as conn, i}
-								{@const dot1 = dots.find(d => d.id === conn.dotId1)}
-								{@const dot2 = dots.find(d => d.id === conn.dotId2)}
+								{@const dot1 = dots.find(
+									(d) => d.id === conn.dotId1,
+								)}
+								{@const dot2 = dots.find(
+									(d) => d.id === conn.dotId2,
+								)}
 								<div class="connection-item">
 									<span>
 										Dot {conn.dotId1} ↔ Dot {conn.dotId2}
 										{#if dot1}
-											<span class="color-dot" style="background: {dot1.color}"></span>
+											<span
+												class="color-dot"
+												style="background: {dot1.color}"
+											></span>
 										{/if}
 									</span>
-									<button class="remove-btn" onclick={() => removeConnection(i)}>×</button>
+									<button
+										class="remove-btn"
+										onclick={() => removeConnection(i)}
+										>×</button
+									>
 								</div>
 							{/each}
 						</div>
@@ -500,30 +580,49 @@
 							<div class="add-connection">
 								<select id="dot1">
 									{#each dots as dot}
-										<option value={dot.id}>Dot {dot.id}</option>
+										<option value={dot.id}
+											>Dot {dot.id}</option
+										>
 									{/each}
 								</select>
 								<span>↔</span>
 								<select id="dot2">
 									{#each dots as dot}
-										<option value={dot.id}>Dot {dot.id}</option>
+										<option value={dot.id}
+											>Dot {dot.id}</option
+										>
 									{/each}
 								</select>
-								<button onclick={() => {
-									const select1 = document.getElementById('dot1') as HTMLSelectElement;
-									const select2 = document.getElementById('dot2') as HTMLSelectElement;
-									addConnection(parseInt(select1.value), parseInt(select2.value));
-								}}>Add</button>
+								<button
+									onclick={() => {
+										const select1 = document.getElementById(
+											"dot1",
+										) as HTMLSelectElement;
+										const select2 = document.getElementById(
+											"dot2",
+										) as HTMLSelectElement;
+										addConnection(
+											parseInt(select1.value),
+											parseInt(select2.value),
+										);
+									}}>Add</button
+								>
 							</div>
 						{/if}
 					</div>
 
 					<div class="section actions">
-						<button class="primary" onclick={saveLevel}>💾 Save Level</button>
-						<button class="primary" onclick={testLevel}>🎮 Test Level</button>
+						<button class="primary" onclick={saveLevel}
+							>💾 Save Level</button
+						>
+						<button class="primary" onclick={testLevel}
+							>🎮 Test Level</button
+						>
 						<button onclick={exportLevel}>📤 Export JSON</button>
 						<button onclick={importLevel}>📥 Import JSON</button>
-						<button class="danger" onclick={clearAll}>🗑️ Clear All</button>
+						<button class="danger" onclick={clearAll}
+							>🗑️ Clear All</button
+						>
 					</div>
 				</div>
 
@@ -541,19 +640,29 @@
 						class="editor-canvas"
 						class:dragging={isDragging}
 					></canvas>
-					<p class="stats">Dots: {dots.length} | Connections: {connections.length}</p>
+					<p class="stats">
+						Dots: {dots.length} | Connections: {connections.length}
+					</p>
 				</div>
 			</div>
-		{:else if mode === 'test' && gameManager}
+		{:else if mode === "test" && gameManager}
 			<div class="test-mode">
 				<div class="test-header">
 					<h2>Testing: {levelName}</h2>
 					<button onclick={backToEdit}>← Back to Editor</button>
 				</div>
-				<GameCanvas {gameManager} width={canvasWidth} height={canvasHeight} />
+				<GameCanvas
+					{gameManager}
+					width={canvasWidth}
+					height={canvasHeight}
+				/>
 				<div class="test-info">
 					<p>Lives: {gameManager.state.lives}</p>
-					<p>Connections: {gameManager.state.drawnLines.filter(l => l.isComplete).length} / {connections.length}</p>
+					<p>
+						Connections: {gameManager.state.drawnLines.filter(
+							(l) => l.isComplete,
+						).length} / {connections.length}
+					</p>
 					{#if gameManager.state.isComplete}
 						<p class="success">✓ Level is solvable!</p>
 					{/if}
@@ -567,7 +676,8 @@
 	:global(body) {
 		margin: 0;
 		padding: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+			Oxygen, Ubuntu, Cantarell, sans-serif;
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		min-height: 100vh;
 	}
@@ -694,7 +804,9 @@
 
 	.color-button.active {
 		border-color: #333;
-		box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+		box-shadow:
+			0 0 0 2px white,
+			0 0 0 4px #333;
 	}
 
 	.remove-color-btn {
@@ -856,7 +968,7 @@
 	}
 
 	button.primary {
-		background: #4ECDC4;
+		background: #4ecdc4;
 	}
 
 	button.primary:hover {
@@ -884,7 +996,8 @@
 		cursor: move;
 	}
 
-	.edit-badge, .new-badge {
+	.edit-badge,
+	.new-badge {
 		padding: 0.5rem 1rem;
 		border-radius: 6px;
 		font-size: 0.9rem;
@@ -894,12 +1007,12 @@
 	}
 
 	.edit-badge {
-		background: #FFD93D;
+		background: #ffd93d;
 		color: #333;
 	}
 
 	.new-badge {
-		background: #4ECDC4;
+		background: #4ecdc4;
 		color: white;
 	}
 
@@ -946,7 +1059,7 @@
 	}
 
 	.success {
-		color: #4ECDC4 !important;
+		color: #4ecdc4 !important;
 	}
 
 	@media (max-width: 1200px) {

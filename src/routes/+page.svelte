@@ -1,18 +1,14 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { getAllLevels, loadProgress } from '$lib/stores/levels';
-	import type { Level } from '$lib/types/game';
+	import { goto } from "$app/navigation";
+	import { onMount } from "svelte";
+	import { levelsStore, loadProgress } from "$lib/stores/levels";
+	import type { Level } from "$lib/types/game";
 
 	let showLevelSelector = $state(false);
-	let allLevels = $state<Level[]>([]);
-
-	onMount(() => {
-		allLevels = getAllLevels();
-	});
+	let allLevels = $derived($levelsStore);
 
 	function handleTutorial() {
-		window.location.href = '/levels?tutorial=true';
+		window.location.href = "/levels?tutorial=true";
 	}
 
 	function handlePlay() {
@@ -28,11 +24,11 @@
 	}
 
 	function handleEdit() {
-		window.location.href = '/editor';
+		window.location.href = "/editor";
 	}
 
 	function handleSettings() {
-		window.location.href = '/settings';
+		window.location.href = "/settings";
 	}
 </script>
 
@@ -41,33 +37,35 @@
 		{#if !showLevelSelector}
 			<div class="menu-card">
 				<h1>🎮 Line Connect Puzzle</h1>
-				<p class="subtitle">Connect the dots without overlapping lines!</p>
+				<p class="subtitle">
+					Connect the dots without overlapping lines!
+				</p>
 
 				<div class="menu-buttons">
-				<button class="menu-btn tutorial" onclick={handleTutorial}>
-					<span class="icon">🎓</span>
-					<span class="label">Tutorial</span>
-					<span class="desc">Learn how to play</span>
-				</button>
+					<button class="menu-btn tutorial" onclick={handleTutorial}>
+						<span class="icon">🎓</span>
+						<span class="label">Tutorial</span>
+						<span class="desc">Learn how to play</span>
+					</button>
 
-				<button class="menu-btn play" onclick={handlePlay}>
-					<span class="icon">🎯</span>
-					<span class="label">Play</span>
-					<span class="desc">Choose a level</span>
-				</button>
+					<button class="menu-btn play" onclick={handlePlay}>
+						<span class="icon">🎯</span>
+						<span class="label">Play</span>
+						<span class="desc">Choose a level</span>
+					</button>
 
-				<button class="menu-btn edit" onclick={handleEdit}>
-					<span class="icon">🎨</span>
-					<span class="label">Edit Level</span>
-					<span class="desc">Create your own levels</span>
-				</button>
+					<button class="menu-btn edit" onclick={handleEdit}>
+						<span class="icon">🎨</span>
+						<span class="label">Edit Level</span>
+						<span class="desc">Create your own levels</span>
+					</button>
 
-				<button class="menu-btn settings" onclick={handleSettings}>
-					<span class="icon">⚙️</span>
-					<span class="label">Settings</span>
-					<span class="desc">Game preferences</span>
-				</button>
-			</div>
+					<button class="menu-btn settings" onclick={handleSettings}>
+						<span class="icon">⚙️</span>
+						<span class="label">Settings</span>
+						<span class="desc">Game preferences</span>
+					</button>
+				</div>
 
 				<footer class="menu-footer">
 					<p>Made with ❤️ using SvelteKit</p>
@@ -95,7 +93,7 @@
 							{#if progress?.completed}
 								<div class="completed-badge">✓</div>
 							{/if}
-							{#if level.id >= 1000}
+							{#if !level.isOfficial}
 								<div class="custom-badge">Custom</div>
 							{/if}
 						</button>
@@ -110,7 +108,8 @@
 	:global(body) {
 		margin: 0;
 		padding: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+			Oxygen, Ubuntu, Cantarell, sans-serif;
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		min-height: 100vh;
 	}
@@ -178,13 +177,18 @@
 	}
 
 	.menu-btn::before {
-		content: '';
+		content: "";
 		position: absolute;
 		top: 0;
 		left: -100%;
 		width: 100%;
 		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+		background: linear-gradient(
+			90deg,
+			transparent,
+			rgba(255, 255, 255, 0.3),
+			transparent
+		);
 		transition: left 0.5s;
 	}
 
@@ -326,7 +330,7 @@
 	}
 
 	.level-card.completed {
-		background: linear-gradient(135deg, #4ECDC4 0%, #3db8af 100%);
+		background: linear-gradient(135deg, #4ecdc4 0%, #3db8af 100%);
 		border-color: #3db8af;
 	}
 
@@ -358,7 +362,7 @@
 		top: 8px;
 		right: 8px;
 		background: white;
-		color: #4ECDC4;
+		color: #4ecdc4;
 		width: 28px;
 		height: 28px;
 		border-radius: 50%;
@@ -375,7 +379,7 @@
 		bottom: 8px;
 		left: 50%;
 		transform: translateX(-50%);
-		background: #FFD93D;
+		background: #ffd93d;
 		color: #333;
 		padding: 0.25rem 0.75rem;
 		border-radius: 12px;

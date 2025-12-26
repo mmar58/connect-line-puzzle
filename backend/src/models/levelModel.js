@@ -53,14 +53,44 @@ export class LevelModel {
         };
     }
 
+    static async create(data) {
+        const { name, gridWidth, gridHeight, dots, requiredConnections, isOfficial = false, createdBy = 'anonymous' } = data;
+
+        const [result] = await pool.execute(`
+            INSERT INTO levels (name, grid_width, grid_height, dots, required_connections, 
+                              is_official, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [
+            name,
+            gridWidth,
+            gridHeight,
+            JSON.stringify(dots),
+            JSON.stringify(requiredConnections),
+            isOfficial,
+            createdBy
+        ]);
+
+        const levelId = result.insertId;
+        await this.logSync(levelId, 'created');
+
+        return levelId;
+    }
+
+    static async logSync(levelId, action) {
+        await pool.execute(`
+            INSERT INTO level_sync (level_id, action)
+            VALUES (?, ?)
+        `, [levelId, action]);
+    }
+
     static async getUpdatedSince(timestamp) {
         const [rows] = await pool.execute(`
-        SELECT DISTINCT level_id, action, MAX(timestamp) as timestamp
-        FROM level_sync
-        WHERE timestamp > ?
-        GROUP BY level_id, action
-        ORDER BY timestamp DESC
-    `, [timestamp]);
+            SELECT DISTINCT level_id, action, MAX(timestamp) as timestamp
+            FROM level_sync
+            WHERE timestamp > ?
+            GROUP BY level_id, action
+            ORDER BY timestamp DESC
+        `, [timestamp]);
 
         const result = {
             created: [],

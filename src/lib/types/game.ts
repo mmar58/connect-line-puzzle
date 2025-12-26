@@ -37,6 +37,7 @@ export interface Level {
 	requiredConnections: Connection[];
 	gridWidth: number;
 	gridHeight: number;
+	isOfficial?: boolean;
 }
 
 export interface GameState {

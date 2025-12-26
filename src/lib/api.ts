@@ -22,6 +22,10 @@ export const api = {
             }
 
             const data = await response.json();
+            // If the backend response already follows the structure, return it directly
+            if (data && typeof data === 'object' && 'success' in data) {
+                return data;
+            }
             return { success: true, data };
         } catch (e) {
             console.error(`API GET ${endpoint} failed:`, e);
@@ -45,6 +49,10 @@ export const api = {
             }
 
             const data = await response.json();
+            // If the backend response already follows the structure, return it directly
+            if (data && typeof data === 'object' && 'success' in data) {
+                return data;
+            }
             return { success: true, data };
         } catch (e) {
             console.error(`API POST ${endpoint} failed:`, e);

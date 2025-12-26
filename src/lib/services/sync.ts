@@ -3,8 +3,7 @@ import {
     saveLevelToStorage,
     loadAllProgress,
     saveProgress,
-    getAllLevels,
-    builtInLevels
+    levelsStore // Import store
 } from '$lib/stores/levels';
 import type { Level, LevelProgress } from '$lib/types/game';
 
@@ -21,21 +20,30 @@ export function getUserId(): string {
 
 export const syncService = {
     async syncLevels() {
+        console.log('[Sync] Starting level sync...');
         try {
             const response = await api.get<{ levels: Level[] }>('/levels?perPage=100');
+            console.log('[Sync] API Response:', response);
 
             if (response.success && response.data?.levels) {
                 // Update local storage with server levels
+                console.log(`[Sync] Found ${response.data.levels.length} levels from server.`);
                 response.data.levels.forEach(level => {
                     // Skip built-in levels if they come from server to avoid duplication/issues
                     // (Assuming server might serve customized official levels, but primarily we want new ones)
                     // The store handles ID checking, so it's safer to just save.
+                    console.log(`[Sync] Saving level ${level.id} (${level.name}) to storage.`);
                     saveLevelToStorage(level);
                 });
-                console.log(`Synced ${response.data.levels.length} levels from server.`);
+                console.log(`[Sync] Synced ${response.data.levels.length} levels from server.`);
+                // Force store refresh
+                console.log('[Sync] Reloading store...');
+                levelsStore.reload();
+            } else {
+                console.warn('[Sync] Failed to get levels or empty data:', response);
             }
         } catch (e) {
-            console.error('Level sync failed:', e);
+            console.error('[Sync] Level sync failed:', e);
             // Offline: Do nothing, rely on local storage
         }
     },

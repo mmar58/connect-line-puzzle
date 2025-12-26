@@ -15,6 +15,22 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.post('/', async (req, res) => {
+    try {
+        const data = req.body;
+        // Basic validation
+        if (!data.name || !data.gridWidth || !data.gridHeight || !data.dots || !data.requiredConnections) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        const levelId = await LevelModel.create(data);
+        res.json({ success: true, data: { levelId, message: 'Level created successfully' } });
+    } catch (error) {
+        console.error('Create level error:', error);
+        res.status(500).json({ success: false, error: 'Failed to create level' });
+    }
+});
+
 router.get('/:id', async (req, res) => {
     try {
         const level = await LevelModel.getById(req.params.id);
